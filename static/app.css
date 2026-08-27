@@ -1,15 +1,47 @@
+/* Light palette is the base; dark is applied either by system preference
+   (unless the user forced light) or by an explicit [data-theme="dark"]. */
 :root {
-  color-scheme: dark;
+  color-scheme: light dark;
+  --bg: #f5f6f8;
+  --panel: #ffffff;
+  --border: #d9dee4;
+  --text: #1a1d21;
+  --muted: #5b6672;
+  --accent: #1f6feb;
+  --danger: #d92d20;
+  --warn: #a15c07;
+  --shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+  --radius: 0.6rem;
+}
+
+/* dark tokens — kept identical in both blocks below */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111417;
+    --panel: #1b1f24;
+    --border: #2c333b;
+    --text: #e7eaee;
+    --muted: #9aa7b2;
+    --accent: #4b93ff;
+    --danger: #ff5c5c;
+    --warn: #f0b429;
+    --shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  }
+}
+:root[data-theme="dark"] {
   --bg: #111417;
   --panel: #1b1f24;
   --border: #2c333b;
   --text: #e7eaee;
   --muted: #9aa7b2;
-  --accent: #2d7dff;
+  --accent: #4b93ff;
   --danger: #ff5c5c;
   --warn: #f0b429;
-  --radius: 0.6rem;
+  --shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
 }
+
+:root[data-theme="dark"] { color-scheme: dark; }
+:root[data-theme="light"] { color-scheme: light; }
 
 * { box-sizing: border-box; }
 
@@ -35,6 +67,15 @@ body {
 .topbar nav a { color: var(--muted); text-decoration: none; padding: 0.2rem 0; }
 .topbar nav a:hover { color: var(--text); }
 .topbar nav a.active { color: var(--text); border-bottom: 2px solid var(--accent); }
+
+.theme-toggle {
+  margin-left: auto;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 0.35rem 0.7rem;
+  font-size: 0.85rem;
+}
 
 main { max-width: 880px; margin: 0 auto; padding: 1.5rem; }
 h1 { font-weight: 600; margin-top: 0.5rem; }
@@ -102,7 +143,7 @@ button:disabled { opacity: 0.5; cursor: default; }
   max-width: 100%;
   border-radius: var(--radius);
   background: #000;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--shadow);
 }
 .snapshot { display: none; margin-top: 1rem; max-width: 100%; border-radius: var(--radius); }
 

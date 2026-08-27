@@ -3,6 +3,13 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <script>
+    // Apply the saved theme before first paint to avoid a flash.
+    try {
+      var t = localStorage.getItem("theme");
+      if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+    } catch (e) {}
+  </script>
   <title>{% block title %}Pi Console{% endblock %}</title>
   <link rel="stylesheet" href="/static/app.css"/>
 </head>
@@ -16,6 +23,7 @@
       <a href="/connect" class="{{ 'active' if request.url.path.startswith('/connect') }}">Connect</a>
       <a href="/system" class="{{ 'active' if request.url.path.startswith('/system') }}">System</a>
     </nav>
+    <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Toggle light/dark theme"></button>
   </header>
   <main>
     {% block content %}{% endblock %}

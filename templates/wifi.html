@@ -80,11 +80,11 @@
     }
   }
 
-  async function scan() {
+  async function scan(rescan) {
     el('scan').disabled = true;
-    el('networks').innerHTML = '<tr><td class="muted">Scanning…</td></tr>';
+    if (rescan) el('networks').innerHTML = '<tr><td class="muted">Scanning…</td></tr>';
     try {
-      const data = await getJSON('/wifi/scan');
+      const data = await getJSON('/wifi/scan' + (rescan ? '?rescan=1' : ''));
       renderNetworks(data.networks, data.saved || []);
     } catch (e) {
       el('networks').innerHTML = `<tr><td class="muted">Scan failed: ${escapeHtml(e.message)}</td></tr>`;
@@ -118,7 +118,7 @@
     scan();
   });
 
-  el('scan').addEventListener('click', scan);
+  el('scan').addEventListener('click', () => scan(true));
   refreshStatus();
   scan();
   stopStatusPoll = poll(refreshStatus, 8000);

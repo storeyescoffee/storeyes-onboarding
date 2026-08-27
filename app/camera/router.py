@@ -11,7 +11,9 @@ router = APIRouter(prefix="/camera", tags=["camera"])
 
 @router.get("", response_class=HTMLResponse)
 def page(request: Request):
-    return config.templates.TemplateResponse(request, "camera.html")
+    return config.templates.TemplateResponse(
+        request, "camera.html", {"fps": config.FPS}
+    )
 
 
 @router.get("/status")

@@ -34,9 +34,9 @@ async def status():
 
 
 @router.get("/scan")
-async def scan():
+async def scan(rescan: bool = False):
     try:
-        networks = await run_in_threadpool(service.scan)
+        networks = await run_in_threadpool(service.scan, rescan)
         saved = await run_in_threadpool(service.saved)
         return {"networks": networks, "saved": saved}
     except Exception as e:

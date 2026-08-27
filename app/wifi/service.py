@@ -8,6 +8,7 @@ NetworkManager keyfile, drops it in place (root-owned, 0600) via the allowlisted
 from __future__ import annotations
 
 import re
+import time
 from pathlib import Path
 
 from app.shell import CommandError, run, sudo
@@ -77,13 +78,17 @@ def status() -> dict:
     }
 
 
-def scan(rescan: bool = True) -> list[dict]:
-    args = ["device", "wifi", "list"]
+def scan(rescan: bool = False) -> list[dict]:
+    # `nmcli ... list --rescan yes` triggers a fresh scan and returns whatever
+    # it has found *so far* — on a slow radio that's often just the associated
+    # AP. So we read the cached list (which nmcli keeps warm) and only kick off
+    # an explicit rescan when asked, giving it a moment to populate.
     if rescan:
-        args += ["--rescan", "yes"]
+        run(["nmcli", "device", "wifi", "rescan"], timeout=15)  # best effort
+        time.sleep(2.5)
 
     best: dict[str, dict] = {}
-    for row in _nmcli("IN-USE,SSID,SIGNAL,SECURITY", *args, timeout=25):
+    for row in _nmcli("IN-USE,SSID,SIGNAL,SECURITY", "device", "wifi", "list", timeout=20):
         if len(row) < 4:
             continue
         in_use, ssid, signal_s, security = row[:4]

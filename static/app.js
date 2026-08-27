@@ -4,6 +4,35 @@ function el(id) {
   return document.getElementById(id);
 }
 
+/* --- theme toggle ------------------------------------------------------- */
+function currentTheme() {
+  const forced = document.documentElement.dataset.theme;
+  if (forced === "light" || forced === "dark") return forced;
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
+function updateThemeButton() {
+  const btn = el("theme-toggle");
+  if (btn) btn.textContent = currentTheme() === "dark" ? "☀ Light" : "☾ Dark";
+}
+
+function toggleTheme() {
+  const next = currentTheme() === "dark" ? "light" : "dark";
+  document.documentElement.dataset.theme = next;
+  try { localStorage.setItem("theme", next); } catch (e) {}
+  updateThemeButton();
+}
+
+(function initTheme() {
+  const btn = el("theme-toggle");
+  if (btn) btn.addEventListener("click", toggleTheme);
+  updateThemeButton();
+  try {
+    window.matchMedia("(prefers-color-scheme: dark)")
+      .addEventListener("change", updateThemeButton);
+  } catch (e) {}
+})();
+
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",

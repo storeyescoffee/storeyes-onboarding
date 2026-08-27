@@ -2,7 +2,7 @@
 {% block title %}Camera — Pi Console{% endblock %}
 
 {% block content %}
-<h1>Camera</h1>
+<h1>Camera <span class="muted">— Live ({{ fps }} FPS)</span></h1>
 <img class="stream" src="/camera/stream" alt="live stream"/>
 <div class="row">
   <button id="btn" class="primary">Capture Still</button>

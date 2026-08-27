@@ -61,7 +61,7 @@ storeyes-onboarding/
 │   └── multi-feature-plan.md
 └── deploy/
     ├── sudoers.d/pi-console   # command allowlist (installed to /etc/sudoers.d/)
-    └── pi-console.service     # systemd unit
+    └── onboarding.service     # systemd --user unit
 ```
 
 Rule of thumb: **`service.py` = logic + subprocess, no FastAPI. `router.py` = HTTP only, no
@@ -258,8 +258,9 @@ Straight move of today's code. Route prefix changes `/` → `/camera`, `/stream`
    real user), test the keyfile → `connection up` flow.
 8. Build Pi Connect feature (block-until-verified signin).
 9. Add `system` feature.
-10. Add `deploy/pi-console.service` (runs as the login user, `WantedBy=default.target` under
-    `systemctl --user`, or a system unit with `User=pi`), document install: install sudoers,
+10. Add `deploy/onboarding.service` — a `systemctl --user` unit
+    (`WantedBy=default.target`) so it inherits the user session bus rpi-connect
+    needs; `loginctl enable-linger` for boot start. Document install: sudoers,
     `pip install`, enable service.
 
 Steps 1–6 are pure refactor (no behavior change) and can land first.

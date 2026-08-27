@@ -57,10 +57,10 @@ Or as a systemd **user** service (keeps `rpi-connect`'s session bus):
 
 ```bash
 mkdir -p ~/.config/systemd/user
-cp deploy/pi-console.service ~/.config/systemd/user/
+cp deploy/onboarding.service ~/.config/systemd/user/
 systemctl --user daemon-reload
-systemctl --user enable --now pi-console
-sudo loginctl enable-linger "$USER"      # run without being logged in
+systemctl --user enable --now onboarding
+sudo loginctl enable-linger "$USER"      # run at boot / without being logged in
 ```
 
 ## Notes
