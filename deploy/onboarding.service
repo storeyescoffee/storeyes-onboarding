@@ -4,10 +4,13 @@
 # bus, which is what `rpi-connect` talks to. It runs as your login user; the
 # only privileged bits are the Wi-Fi commands in deploy/sudoers.d/pi-console.
 #
-# Install:
+# Uses the system python3 (deps installed system-wide, no venv). Install them with:
+#   sudo apt install -y python3-fastapi python3-uvicorn python3-jinja2 python3-picamera2
+#
+# Install the unit:
 #   mkdir -p ~/.config/systemd/user
 #   cp deploy/onboarding.service ~/.config/systemd/user/onboarding.service
-#   # adjust WorkingDirectory / ExecStart below if the checkout isn't ~/storeyes-onboarding
+#   # adjust WorkingDirectory below if the checkout isn't ~/storeyes-onboarding
 #   systemctl --user daemon-reload
 #   systemctl --user enable --now onboarding
 #
@@ -27,7 +30,7 @@ Wants=network-online.target
 [Service]
 Type=simple
 WorkingDirectory=%h/storeyes-onboarding
-ExecStart=%h/storeyes-onboarding/.venv/bin/python main.py
+ExecStart=/usr/bin/python3 main.py
 Restart=on-failure
 RestartSec=3
 

@@ -28,14 +28,13 @@ deploy/              sudoers allowlist + systemd user unit
 ## Install (Raspberry Pi OS Bookworm)
 
 ```bash
-python3 -m venv .venv
-. .venv/bin/activate
-pip install -r requirements.txt
-
-# Pi Camera backend:
-sudo apt install -y python3-picamera2
+# Deps, system-wide (Bookworm has them all in apt — no venv):
+sudo apt install -y python3-fastapi python3-uvicorn python3-jinja2 python3-picamera2
 # USB webcam instead: set CAMERA_BACKEND="usb" in app/config.py and
-#   pip install "imageio[ffmpeg]" simplejpeg
+#   sudo apt install -y python3-imageio python3-simplejpeg
+#
+# Prefer a venv? python3 -m venv --system-site-packages .venv
+#   (--system-site-packages so it can see python3-picamera2)
 
 # Wi-Fi feature needs the sudoers allowlist (runs as your user, not root):
 sudo cp deploy/sudoers.d/pi-console /etc/sudoers.d/pi-console

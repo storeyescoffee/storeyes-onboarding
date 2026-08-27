@@ -1,3 +1,7 @@
+# On Raspberry Pi OS (Bookworm) prefer apt — see README:
+#   sudo apt install -y python3-fastapi python3-uvicorn python3-jinja2 python3-picamera2
+# This file is for `pip install -r` on other platforms / in a venv.
+
 fastapi
 uvicorn[standard]
 jinja2
