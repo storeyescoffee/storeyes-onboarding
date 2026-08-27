@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Pi Console{% endblock %}
+
+{% block content %}
+<h1>Dashboard</h1>
+<div class="cards">
+  <a class="card" href="/camera">
+    <h2>Camera</h2>
+    <p id="c-camera" class="muted">Loading…</p>
+  </a>
+  <a class="card" href="/wifi">
+    <h2>Wi-Fi</h2>
+    <p id="c-wifi" class="muted">Loading…</p>
+  </a>
+  <a class="card" href="/connect">
+    <h2>Pi Connect</h2>
+    <p id="c-connect" class="muted">Loading…</p>
+  </a>
+  <a class="card" href="/system">
+    <h2>System</h2>
+    <p id="c-system" class="muted">Loading…</p>
+  </a>
+</div>
+{% endblock %}
+
+{% block script %}
+<script>
+  async function load() {
+    try {
+      const s = await getJSON('/camera/status');
+      el('c-camera').textContent =
+        `${s.backend} · ${s.stream_resolution.join('×')} @ ${s.fps} FPS`
+        + (s.initialized ? ' · live' : '');
+    } catch (e) { el('c-camera').textContent = 'unavailable'; }
+
+    try {
+      const s = await getJSON('/wifi/status');
+      el('c-wifi').textContent = s.connected
+        ? `${s.ssid || '?'} ${s.signal != null ? '(' + s.signal + '%)' : ''} · ${s.ip || ''}`.trim()
+        : (s.state || 'not connected');
+    } catch (e) { el('c-wifi').textContent = 'unavailable'; }
+
+    try {
+      const s = await getJSON('/connect/status');
+      el('c-connect').textContent = !s.installed ? 'not installed'
+        : s.signed_in ? `signed in${s.account ? ' as ' + s.account : ''}`
+        : 'not signed in';
+    } catch (e) { el('c-connect').textContent = 'unavailable'; }
+
+    try {
+      const s = await getJSON('/system/info');
+      const t = s.temperature_c != null ? `${s.temperature_c}°C` : '';
+      el('c-system').textContent = `${s.hostname} · ${(s.ips[0] || '')} ${t}`.trim();
+    } catch (e) { el('c-system').textContent = 'unavailable'; }
+  }
+  load();
+</script>
+{% endblock %}

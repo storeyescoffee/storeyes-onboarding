@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+jinja2
+
+# USB / UVC webcam backend only (CAMERA_BACKEND = "usb"):
+#   imageio[ffmpeg]
+#   simplejpeg
+#
+# Pi Camera backend (CAMERA_BACKEND = "picamera2") comes from apt:
+#   sudo apt install -y python3-picamera2

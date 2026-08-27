@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}System — Pi Console{% endblock %}
+
+{% block content %}
+<h1>System</h1>
+<section class="panel">
+  <div class="row space-between">
+    <h2>Device</h2>
+    <button id="refresh" class="secondary">Refresh</button>
+  </div>
+  <table class="kv">
+    <tbody id="info">
+      <tr><td class="muted">Loading…</td></tr>
+    </tbody>
+  </table>
+</section>
+{% endblock %}
+
+{% block script %}
+<script>
+  function row(k, v) { return `<tr><th>${k}</th><td>${escapeHtml(String(v ?? '—'))}</td></tr>`; }
+
+  async function load() {
+    try {
+      const s = await getJSON('/system/info');
+      const d = s.disk || {};
+      el('info').innerHTML = [
+        row('Hostname', s.hostname),
+        row('User', s.user),
+        row('Model', s.model),
+        row('IP addresses', (s.ips || []).join(', ')),
+        row('Temperature', s.temperature_c != null ? s.temperature_c + ' °C' : null),
+        row('Uptime', s.uptime),
+        row('Disk /', `${d.used_gb}/${d.total_gb} GB used (${d.percent}%), ${d.free_gb} GB free`),
+      ].join('');
+    } catch (e) {
+      el('info').innerHTML = `<tr><td class="muted">unavailable: ${escapeHtml(e.message)}</td></tr>`;
+    }
+  }
+  el('refresh').addEventListener('click', load);
+  load();
+  poll(load, 10000);
+</script>
+{% endblock %}

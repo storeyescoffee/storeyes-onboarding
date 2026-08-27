@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Camera — Pi Console{% endblock %}
+
+{% block content %}
+<h1>Camera</h1>
+<img class="stream" src="/camera/stream" alt="live stream"/>
+<div class="row">
+  <button id="btn" class="primary">Capture Still</button>
+</div>
+<div id="status" class="muted"></div>
+<img id="photo" class="snapshot" alt=""/>
+{% endblock %}
+
+{% block script %}
+<script>
+  el('btn').addEventListener('click', async () => {
+    const btn = el('btn'), status = el('status'), photo = el('photo');
+    btn.disabled = true;
+    status.textContent = 'Capturing…';
+    try {
+      const data = await postJSON('/camera/capture');
+      photo.src = data.url + '?t=' + Date.now();
+      photo.style.display = 'block';
+      status.textContent = 'Saved: ' + data.name;
+    } catch (e) {
+      status.textContent = 'Error: ' + e.message;
+    } finally {
+      btn.disabled = false;
+    }
+  });
+</script>
+{% endblock %}

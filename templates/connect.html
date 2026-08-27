@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}Pi Connect — Pi Console{% endblock %}
+
+{% block content %}
+<h1>Raspberry Pi Connect</h1>
+
+<section class="panel">
+  <h2>Status</h2>
+  <p id="connect-status" class="muted">Loading…</p>
+  <pre id="connect-raw" class="raw" hidden></pre>
+</section>
+
+<section class="panel" id="signin-panel">
+  <h2>Sign in</h2>
+  <p class="muted">
+    Starts <code>rpi-connect signin</code>. Open the link it gives you on any
+    device, sign in to your Raspberry Pi account, and this page will update when
+    verification completes.
+  </p>
+  <button id="signin" class="primary">Start sign-in</button>
+  <div id="signin-link" class="verify" hidden>
+    <p>Open this to verify:</p>
+    <a id="verify-url" href="#" target="_blank" rel="noopener"></a>
+  </div>
+  <div id="signin-result" class="muted"></div>
+</section>
+
+<section class="panel">
+  <h2>Services</h2>
+  <div class="row">
+    <button id="on" class="secondary">Enable (rpi-connect on)</button>
+    <button id="off" class="secondary">Disable (rpi-connect off)</button>
+  </div>
+  <div id="svc-result" class="muted"></div>
+</section>
+{% endblock %}
+
+{% block script %}
+<script>
+  function renderStatus(s) {
+    const out = el('connect-status');
+    const raw = el('connect-raw');
+    if (!s.installed) {
+      out.textContent = 'rpi-connect is not installed (sudo apt install rpi-connect).';
+      el('signin-panel').classList.add('disabled');
+      raw.hidden = true;
+      return;
+    }
+    const bits = [s.signed_in ? ('Signed in' + (s.account ? ' as ' + s.account : '')) : 'Not signed in'];
+    if (s.screen_sharing) bits.push('Screen sharing: ' + s.screen_sharing);
+    if (s.remote_shell) bits.push('Remote shell: ' + s.remote_shell);
+    out.textContent = bits.join(' · ');
+    if (s.raw) { raw.hidden = false; raw.textContent = s.raw; }
+  }
+
+  async function refreshStatus() {
+    try { renderStatus(await getJSON('/connect/status')); }
+    catch (e) { el('connect-status').textContent = 'unavailable: ' + e.message; }
+  }
+
+  el('signin').addEventListener('click', async () => {
+    const btn = el('signin');
+    const linkBox = el('signin-link');
+    const urlEl = el('verify-url');
+    const result = el('signin-result');
+    btn.disabled = true;
+    result.textContent = 'Starting…';
+    linkBox.hidden = true;
+
+    const stopPoll = poll(async () => {
+      const p = await getJSON('/connect/signin/status');
+      if (p.url) {
+        urlEl.href = p.url;
+        urlEl.textContent = p.url;
+        linkBox.hidden = false;
+        result.textContent = 'Waiting for you to verify in a browser…';
+      }
+    }, 2000);
+
+    try {
+      const data = await postJSON('/connect/signin');
+      result.textContent = data.ok ? 'Signed in successfully.'
+        : ('Sign-in did not complete: ' + (data.error || 'unknown error'));
+    } catch (e) {
+      result.textContent = 'Sign-in failed: ' + e.message;
+    } finally {
+      stopPoll();
+      linkBox.hidden = true;
+      btn.disabled = false;
+      refreshStatus();
+    }
+  });
+
+  async function svc(path, label) {
+    el('svc-result').textContent = label + '…';
+    try { await postJSON(path); el('svc-result').textContent = label + ' done.'; }
+    catch (e) { el('svc-result').textContent = label + ' failed: ' + e.message; }
+    refreshStatus();
+  }
+  el('on').addEventListener('click', () => svc('/connect/on', 'Enabling'));
+  el('off').addEventListener('click', () => svc('/connect/off', 'Disabling'));
+
+  refreshStatus();
+</script>
+{% endblock %}

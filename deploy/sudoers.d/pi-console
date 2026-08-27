@@ -1,0 +1,28 @@
+# Pi Onboarding Console — Wi-Fi command allowlist.
+#
+# Install (replace the user below with the account that runs the console —
+# `whoami` on that box):
+#
+#   sudo cp deploy/sudoers.d/pi-console /etc/sudoers.d/pi-console
+#   sudo sed -i "s/^pi /$(whoami) /" /etc/sudoers.d/pi-console
+#   sudo chmod 440 /etc/sudoers.d/pi-console
+#   sudo chown root:root /etc/sudoers.d/pi-console
+#   sudo visudo -c
+#
+# The console runs as an ordinary user and never as root. Only the exact
+# commands below are permitted without a password. rpi-connect is NOT here — it
+# runs directly as the user in that user's own systemd session.
+#
+# Paths assume Debian/Raspberry Pi OS Bookworm (usr-merge). Verify with
+# `command -v nmcli tee chmod` and adjust if different.
+
+Cmnd_Alias PICONSOLE_WIFI = \
+    /usr/bin/nmcli connection reload, \
+    /usr/bin/nmcli connection up *, \
+    /usr/bin/nmcli connection down *, \
+    /usr/bin/nmcli connection delete *, \
+    /usr/bin/nmcli radio wifi *, \
+    /usr/bin/tee /etc/NetworkManager/system-connections/*, \
+    /usr/bin/chmod 600 /etc/NetworkManager/system-connections/*
+
+pi ALL=(root) NOPASSWD: PICONSOLE_WIFI

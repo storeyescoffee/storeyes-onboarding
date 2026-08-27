@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block title %}Wi-Fi — Pi Console{% endblock %}
+
+{% block content %}
+<h1>Wi-Fi</h1>
+
+<section class="panel">
+  <h2>Current connection</h2>
+  <p id="wifi-status" class="muted">Loading…</p>
+</section>
+
+<section class="panel">
+  <div class="row space-between">
+    <h2>Networks</h2>
+    <button id="scan" class="secondary">Rescan</button>
+  </div>
+  <p class="warn">
+    Changing the network may drop the connection you are using to view this page.
+  </p>
+  <table class="list">
+    <tbody id="networks">
+      <tr><td class="muted">Scanning…</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="panel">
+  <h2>Connect</h2>
+  <form id="connect-form" class="stack">
+    <label>SSID <input id="ssid" name="ssid" autocomplete="off" required/></label>
+    <label>Password <input id="password" name="password" type="password"
+      autocomplete="off" placeholder="leave blank for open networks"/></label>
+    <button class="primary" type="submit">Connect</button>
+  </form>
+  <div id="connect-status" class="muted"></div>
+</section>
+{% endblock %}
+
+{% block script %}
+<script>
+  let stopStatusPoll = null;
+
+  function fmtStatus(s) {
+    if (s.error) return 'Error: ' + s.error;
+    if (!s.connected) return s.state || 'not connected';
+    const bits = [s.ssid || s.connection || '?'];
+    if (s.signal != null) bits.push(s.signal + '%');
+    if (s.ip) bits.push(s.ip);
+    return bits.join(' · ');
+  }
+
+  async function refreshStatus() {
+    try { el('wifi-status').textContent = fmtStatus(await getJSON('/wifi/status')); }
+    catch (e) { el('wifi-status').textContent = 'unavailable: ' + e.message; }
+  }
+
+  function renderNetworks(nets, saved) {
+    const tbody = el('networks');
+    tbody.innerHTML = '';
+    if (!nets.length) { tbody.innerHTML = '<tr><td class="muted">No networks found</td></tr>'; return; }
+    for (const n of nets) {
+      const tr = document.createElement('tr');
+      const known = saved.includes('pi-console-' + n.ssid.toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, ''));
+      tr.innerHTML = `
+        <td>${n.active ? '● ' : ''}${escapeHtml(n.ssid)}</td>
+        <td class="muted">${n.secured ? n.security : 'open'}</td>
+        <td class="muted num">${n.signal}%</td>
+        <td class="actions">
+          <button class="link use">Use</button>
+          ${known ? '<button class="link danger forget">Forget</button>' : ''}
+        </td>`;
+      tr.querySelector('.use').addEventListener('click', () => {
+        el('ssid').value = n.ssid;
+        el('password').value = '';
+        el('password').focus();
+      });
+      const forgetBtn = tr.querySelector('.forget');
+      if (forgetBtn) forgetBtn.addEventListener('click', () => forget(n.ssid));
+      tbody.appendChild(tr);
+    }
+  }
+
+  async function scan() {
+    el('scan').disabled = true;
+    el('networks').innerHTML = '<tr><td class="muted">Scanning…</td></tr>';
+    try {
+      const data = await getJSON('/wifi/scan');
+      renderNetworks(data.networks, data.saved || []);
+    } catch (e) {
+      el('networks').innerHTML = `<tr><td class="muted">Scan failed: ${escapeHtml(e.message)}</td></tr>`;
+    } finally {
+      el('scan').disabled = false;
+    }
+  }
+
+  async function forget(ssid) {
+    if (!confirm('Forget "' + ssid + '"?')) return;
+    try { await postJSON('/wifi/forget', { ssid }); await scan(); await refreshStatus(); }
+    catch (e) { alert('Forget failed: ' + e.message); }
+  }
+
+  el('connect-form').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const ssid = el('ssid').value.trim();
+    const password = el('password').value;
+    if (!ssid) return;
+    const out = el('connect-status');
+    out.textContent = `Connecting to "${ssid}"…`;
+    if (stopStatusPoll) stopStatusPoll();
+    try {
+      await postJSON('/wifi/connect', { ssid, password: password || null });
+      out.textContent = `Connected to "${ssid}".`;
+    } catch (e) {
+      out.textContent = 'Connect failed: ' + e.message
+        + ' (if the Pi switched networks you may need to reload from the new one)';
+    }
+    stopStatusPoll = poll(refreshStatus, 3000);
+    scan();
+  });
+
+  el('scan').addEventListener('click', scan);
+  refreshStatus();
+  scan();
+  stopStatusPoll = poll(refreshStatus, 8000);
+</script>
+{% endblock %}

@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>{% block title %}Pi Console{% endblock %}</title>
+  <link rel="stylesheet" href="/static/app.css"/>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/">Pi&nbsp;Console</a>
+    <nav>
+      <a href="/" class="{{ 'active' if request.url.path == '/' }}">Dashboard</a>
+      <a href="/camera" class="{{ 'active' if request.url.path.startswith('/camera') }}">Camera</a>
+      <a href="/wifi" class="{{ 'active' if request.url.path.startswith('/wifi') }}">Wi-Fi</a>
+      <a href="/connect" class="{{ 'active' if request.url.path.startswith('/connect') }}">Connect</a>
+      <a href="/system" class="{{ 'active' if request.url.path.startswith('/system') }}">System</a>
+    </nav>
+  </header>
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+  <script src="/static/app.js"></script>
+  {% block script %}{% endblock %}
+</body>
+</html>
