@@ -3,7 +3,7 @@
 
 A small web console that runs on a Raspberry Pi and is opened from a browser on
 the same LAN. Features: camera (live MJPEG + still), Wi-Fi management, Raspberry
-Pi Connect setup, read-only system info.
+Pi Connect setup, read-only system info, and triggering storeyes-agent on demand.
 
 See docs/multi-feature-plan.md for the design.
 
@@ -24,6 +24,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from app import config
+from app.agent.router import router as agent_router
 from app.camera import service as camera_service
 from app.camera.router import router as camera_router
 from app.connect.router import router as connect_router
@@ -48,6 +49,7 @@ for _router in (
     wifi_router,
     connect_router,
     system_router,
+    agent_router,
 ):
     app.include_router(_router)
 
