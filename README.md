@@ -13,6 +13,7 @@ Design notes: [docs/multi-feature-plan.md](docs/multi-feature-plan.md).
 ## Layout
 
 ```
+install.sh           one-shot installer (deps + sudoers + systemd user service)
 main.py              entrypoint (builds the app, includes routers)
 app/
   config.py          all tunables (camera res/fps, port, paths)
@@ -26,6 +27,22 @@ deploy/              sudoers allowlist + systemd user unit
 ```
 
 ## Install (Raspberry Pi OS Bookworm)
+
+On the Pi, as the user the console should run as (**not** root):
+
+```bash
+git clone <this repo> ~/storeyes-onboarding && cd ~/storeyes-onboarding
+./install.sh
+```
+
+That installs the apt dependencies (picking the camera packages from
+`CAMERA_BACKEND` in `app/config.py`), the Wi-Fi sudoers allowlist scoped to your
+account, and the systemd **user** service — then enables lingering and starts
+it. It's idempotent, so re-run it after a `git pull`. Steps can be skipped with
+`--skip-apt`, `--skip-sudoers`, `--skip-service` and `--no-connect`;
+`./install.sh --help` lists them.
+
+### By hand
 
 ```bash
 # Deps, system-wide (Bookworm has them all in apt — no venv):
@@ -52,7 +69,8 @@ sudo apt install -y rpi-connect
 python3 main.py            # http://<pi-ip>:8000
 ```
 
-Or as a systemd **user** service (keeps `rpi-connect`'s session bus):
+Or as a systemd **user** service (keeps `rpi-connect`'s session bus) — this is
+what `./install.sh` sets up; by hand it is:
 
 ```bash
 mkdir -p ~/.config/systemd/user
