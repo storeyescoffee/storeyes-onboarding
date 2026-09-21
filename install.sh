@@ -87,7 +87,7 @@ fi
 # --- dependencies -----------------------------------------------------------
 if [ "$do_apt" -eq 1 ]; then
     step "Installing dependencies (apt)"
-    pkgs=(python3-fastapi python3-uvicorn python3-jinja2)
+    pkgs=(python3-fastapi python3-uvicorn)
     case "$CAMERA_BACKEND" in
         picamera2) pkgs+=(python3-picamera2) ;;
         usb)       pkgs+=(python3-imageio python3-simplejpeg) ;;
@@ -122,12 +122,12 @@ python3 - <<'EOF' || die "core dependencies are missing — re-run without --ski
 import importlib.util
 import sys
 
-missing = [m for m in ("fastapi", "uvicorn", "jinja2") if not importlib.util.find_spec(m)]
+missing = [m for m in ("fastapi", "uvicorn") if not importlib.util.find_spec(m)]
 if missing:
     print("    missing:", ", ".join(missing), file=sys.stderr)
     sys.exit(1)
 EOF
-info "fastapi, uvicorn, jinja2 ok"
+info "fastapi, uvicorn ok"
 
 has_module() { python3 -c 'import importlib.util,sys; sys.exit(0 if all(importlib.util.find_spec(m) for m in sys.argv[1:]) else 1)' "$@"; }
 case "$CAMERA_BACKEND" in

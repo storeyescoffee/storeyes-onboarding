@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-"""Pi Onboarding Console — entrypoint.
+"""storeyes-onboarding — entrypoint.
 
-A small web console that runs on a Raspberry Pi and is opened from a browser on
-the same LAN. Features: camera (live MJPEG + still), Wi-Fi management, Raspberry
-Pi Connect setup, read-only system info, and triggering storeyes-agent on demand.
+An API-only service that runs on a Raspberry Pi: camera (live MJPEG + still),
+Wi-Fi management, Raspberry Pi Connect setup, read-only system info, and
+triggering storeyes-agent on demand. No web UI here — the frontend is
+storeyes-fast-onboarding (a Tauri desktop app), which talks to this API
+directly over the LAN.
 
 See docs/multi-feature-plan.md for the design.
 
@@ -21,6 +23,7 @@ Run:
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app import config
@@ -39,8 +42,18 @@ async def lifespan(_: FastAPI):
     camera_service.shutdown_camera()
 
 
-app = FastAPI(title="Pi Onboarding Console", lifespan=lifespan)
-app.mount("/static", StaticFiles(directory=str(config.STATIC_DIR)), name="static")
+app = FastAPI(title="storeyes-onboarding", lifespan=lifespan)
+
+# No auth on this API — it's a LAN-only device endpoint, same trust model as
+# the old single-origin web console. The frontend now runs from a different
+# origin entirely (a Tauri app), so it needs this to read JSON responses.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.mount("/captures", StaticFiles(directory=str(config.CAPTURE_DIR)), name="captures")
 
 for _router in (

@@ -1,28 +1,33 @@
-# Pi Onboarding Console
+# storeyes-onboarding
 
-A small web console that runs on a Raspberry Pi and is opened from a browser on
-the same LAN. Features:
+An **API-only** service that runs on a Raspberry Pi, reachable from the same
+LAN. No web UI — the frontend is
+[storeyes-fast-onboarding](https://github.com/storeyescoffee/storeyes-fast-onboarding),
+a Tauri desktop app that talks to this API directly (CORS is wide open since
+there's no auth here — same LAN-only trust model the old browser console had).
+Features:
 
 - **Camera** — live 15 FPS MJPEG stream + full-res still capture (no OpenCV)
 - **Wi-Fi** — scan, connect, forget, show current connection (NetworkManager)
 - **Raspberry Pi Connect** — status, sign-in, enable/disable
 - **System** — read-only device info (hostname, IP, temperature, uptime, disk)
+- **Agent** — `POST /agent/run` triggers an immediate storeyes-agent pass
+  instead of waiting for the next cron minute (see that repo's README)
 
-Design notes: [docs/multi-feature-plan.md](docs/multi-feature-plan.md).
+Design notes: [docs/multi-feature-plan.md](docs/multi-feature-plan.md) (predates
+the API-only switch, but the feature breakdown still applies).
 
 ## Layout
 
 ```
 install.sh           one-shot installer (deps + sudoers + systemd user service)
-main.py              entrypoint (builds the app, includes routers)
+main.py              entrypoint (builds the app, includes routers, CORS)
 app/
   config.py          all tunables (camera res/fps, port, paths)
   shell.py           run() / sudo() subprocess helpers
-  dashboard.py       "/"
-  camera/  wifi/  connect/  system/
+  dashboard.py       "/" — health/status JSON only
+  camera/  wifi/  connect/  system/  agent/
                      each: service.py (logic, no FastAPI) + router.py (HTTP only)
-templates/           base.html + one page per feature (Jinja2)
-static/              app.css, app.js
 deploy/              sudoers allowlist + systemd user unit
 ```
 
@@ -46,7 +51,7 @@ it. It's idempotent, so re-run it after a `git pull`. Steps can be skipped with
 
 ```bash
 # Deps, system-wide (Bookworm has them all in apt — no venv):
-sudo apt install -y python3-fastapi python3-uvicorn python3-jinja2 python3-picamera2
+sudo apt install -y python3-fastapi python3-uvicorn python3-picamera2
 # USB webcam instead: set CAMERA_BACKEND="usb" in app/config.py and
 #   sudo apt install -y python3-imageio python3-simplejpeg
 #
@@ -85,8 +90,8 @@ sudo loginctl enable-linger "$USER"      # run at boot / without being logged in
 - The app **never runs as root.** Wi-Fi changes go through the `sudo` allowlist
   in `deploy/sudoers.d/pi-console`; the Wi-Fi password is written into a
   `0600` NetworkManager keyfile, never passed on a command line.
-- Changing Wi-Fi may drop the network you're browsing from — the page warns and
-  then polls for the new status.
+- Changing Wi-Fi may drop the connection the client reached this API over —
+  callers should expect that and poll `/wifi/status` afterward.
 - `POST /connect/signin` is a long-lived request: it stays open until
-  `rpi-connect signin` completes. The page polls `/connect/signin/status` to
-  show the verification link while you wait.
+  `rpi-connect signin` completes. Callers poll `/connect/signin/status`
+  meanwhile to show the verification link.

@@ -5,19 +5,13 @@ until `rpi-connect signin` finishes. The page polls GET /connect/signin/status
 meanwhile to show the verification link.
 """
 
-from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi import APIRouter
+from fastapi.responses import JSONResponse
 from starlette.concurrency import run_in_threadpool
 
-from app import config
 from app.connect import service
 
 router = APIRouter(prefix="/connect", tags=["connect"])
-
-
-@router.get("", response_class=HTMLResponse)
-def page(request: Request):
-    return config.templates.TemplateResponse(request, "connect.html")
 
 
 @router.get("/status")

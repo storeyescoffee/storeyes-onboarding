@@ -1,11 +1,10 @@
 """HTTP surface for Wi-Fi management."""
 
-from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi import APIRouter
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
-from app import config
 from app.wifi import service
 
 router = APIRouter(prefix="/wifi", tags=["wifi"])
@@ -18,11 +17,6 @@ class ConnectBody(BaseModel):
 
 class SsidBody(BaseModel):
     ssid: str
-
-
-@router.get("", response_class=HTMLResponse)
-def page(request: Request):
-    return config.templates.TemplateResponse(request, "wifi.html")
 
 
 @router.get("/status")

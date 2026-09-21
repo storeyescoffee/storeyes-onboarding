@@ -1,19 +1,12 @@
 """HTTP surface for the camera feature. Routes only — logic lives in service.py."""
 
-from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
+from fastapi import APIRouter
+from fastapi.responses import JSONResponse, StreamingResponse
 
 from app import config
 from app.camera import service
 
 router = APIRouter(prefix="/camera", tags=["camera"])
-
-
-@router.get("", response_class=HTMLResponse)
-def page(request: Request):
-    return config.templates.TemplateResponse(
-        request, "camera.html", {"fps": config.FPS}
-    )
 
 
 @router.get("/status")
