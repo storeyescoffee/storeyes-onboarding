@@ -8,6 +8,10 @@
 #   ./install.sh
 #
 # It is safe to re-run: every step is idempotent.
+#
+# To remove it again (service + sudoers allowlist; the apt packages stay):
+#
+#   ./install.sh --uninstall
 
 set -euo pipefail
 
@@ -22,6 +26,8 @@ do_apt=1
 do_sudoers=1
 do_service=1
 do_connect=1
+do_uninstall=0
+do_linger=0
 
 usage() {
     cat <<'EOF'
@@ -31,6 +37,8 @@ Usage: ./install.sh [options]
   --skip-sudoers    don't install the Wi-Fi sudoers allowlist
   --skip-service    don't install/start the systemd user service
   --no-connect      don't apt-install rpi-connect
+  --uninstall       remove what this installer put on the box, then exit
+  --disable-linger  with --uninstall: also stop the account lingering at boot
   -h, --help        show this help
 
 Run it as the user the console should run as; it calls sudo where needed.
@@ -43,6 +51,8 @@ for arg in "$@"; do
         --skip-sudoers) do_sudoers=0 ;;
         --skip-service) do_service=0 ;;
         --no-connect)   do_connect=0 ;;
+        --uninstall)    do_uninstall=1 ;;
+        --disable-linger) do_linger=1 ;;
         -h|--help)      usage; exit 0 ;;
         *) echo "unknown option: $arg" >&2; usage >&2; exit 2 ;;
     esac
@@ -59,6 +69,20 @@ info() { printf '    %s\n' "$*"; }
 warn() { printf '%s    warning: %s%s\n' "$YELLOW" "$*" "$OFF" >&2; }
 die()  { printf '%s    error: %s%s\n' "$RED" "$*" "$OFF" >&2; exit 1; }
 
+# Never prompt for a password: every sudo in this script runs with -n, so a
+# missing NOPASSWD rule fails fast instead of waiting for (or erroring on) a
+# TTY. The device must have passwordless sudo for this account.
+sudo() { command sudo -n "$@"; }
+
+# Check with a real command, NOT `sudo -v`: with sudoers' default
+# verifypw=all, `sudo -v` asks for a password as soon as ANY of the user's
+# rules lacks NOPASSWD (e.g. the stock `%sudo ALL=(ALL:ALL) ALL`), even when
+# `NOPASSWD: ALL` lets every real command through.
+require_sudo() {
+    command sudo -n true 2>/dev/null \
+        || die "passwordless sudo is required ($1). Grant it once with: echo '$(id -un) ALL=(ALL) NOPASSWD: ALL' | sudo tee /etc/sudoers.d/010_$(id -un)-nopasswd && sudo chmod 440 /etc/sudoers.d/010_$(id -un)-nopasswd"
+}
+
 # --- preflight --------------------------------------------------------------
 step "Checking the environment"
 
@@ -70,6 +94,76 @@ SERVICE_USER="$(id -un)"
 info "user:       $SERVICE_USER"
 info "checkout:   $REPO_DIR"
 
+# --- uninstall --------------------------------------------------------------
+# Undoes the install in reverse order and exits. The --skip-* flags mean "leave
+# that alone" here too, so `--uninstall --skip-sudoers` drops only the service.
+if [ "$do_uninstall" -eq 1 ]; then
+    if [ $((do_sudoers + do_linger)) -gt 0 ]; then
+        require_sudo "for the sudoers allowlist and lingering"
+    fi
+
+    if [ "$do_service" -eq 1 ]; then
+        step "Removing the systemd user service"
+        if systemctl --user show-environment >/dev/null 2>&1; then
+            systemctl --user disable --now "$SERVICE_NAME" >/dev/null 2>&1 || true
+            info "stopped and disabled"
+        else
+            warn "no systemd user session — removing the unit file only. Stop it from a session with 'systemctl --user disable --now $SERVICE_NAME'."
+        fi
+
+        if [ -f "$UNIT_DIR/$SERVICE_NAME.service" ]; then
+            rm -f "$UNIT_DIR/$SERVICE_NAME.service"
+            info "removed $UNIT_DIR/$SERVICE_NAME.service"
+        else
+            info "no unit at $UNIT_DIR/$SERVICE_NAME.service"
+        fi
+
+        if systemctl --user show-environment >/dev/null 2>&1; then
+            systemctl --user daemon-reload
+            systemctl --user reset-failed "$SERVICE_NAME" >/dev/null 2>&1 || true
+        fi
+    else
+        step "Keeping the systemd service (--skip-service)"
+    fi
+
+    if [ "$do_sudoers" -eq 1 ]; then
+        step "Removing the Wi-Fi sudoers allowlist ($SUDOERS_DST)"
+        if [ -e "$SUDOERS_DST" ]; then
+            sudo rm -f "$SUDOERS_DST"
+            # Never leave a broken /etc/sudoers.d behind — this shell still has
+            # sudo, a fresh one might not.
+            sudo visudo -cq || die "/etc/sudoers is now invalid — fix it from THIS shell, it still has sudo."
+            info "removed; sudoers still valid"
+        else
+            info "not present"
+        fi
+    else
+        step "Keeping the sudoers allowlist (--skip-sudoers)"
+    fi
+
+    if [ "$do_linger" -eq 1 ]; then
+        step "Disabling lingering for $SERVICE_USER"
+        if [ "$(loginctl show-user "$SERVICE_USER" -p Linger --value 2>/dev/null)" = "yes" ]; then
+            if sudo loginctl disable-linger "$SERVICE_USER"; then
+                info "disabled — this account's user services now stop at logout"
+            else
+                warn "couldn't disable lingering."
+            fi
+        else
+            info "already disabled"
+        fi
+    fi
+
+    step "Done"
+    info "The apt packages are still installed — remove them by hand if nothing else needs them:"
+    info "  sudo apt-get remove python3-fastapi python3-uvicorn python3-picamera2 rpi-connect"
+    if [ "$do_linger" -eq 0 ]; then
+        info "Lingering is untouched; drop it with: sudo loginctl disable-linger $SERVICE_USER"
+    fi
+    echo
+    exit 0
+fi
+
 # Read the camera backend and port straight out of app/config.py so the
 # installer can never disagree with the app.
 CAMERA_BACKEND="$(sed -n 's/^CAMERA_BACKEND[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' "$REPO_DIR/app/config.py")"
@@ -79,9 +173,9 @@ PORT="${PORT:-8000}"
 info "camera:     $CAMERA_BACKEND"
 info "port:       $PORT"
 
-# Prompt for the sudo password once, up front — but only if a step needs root.
+# Check passwordless sudo once, up front — but only if a step needs root.
 if [ $((do_apt + do_sudoers + do_service)) -gt 0 ]; then
-    sudo -v || die "sudo is required (for apt, the sudoers allowlist and lingering)."
+    require_sudo "for apt, the sudoers allowlist and lingering"
 fi
 
 # --- dependencies -----------------------------------------------------------
@@ -98,8 +192,8 @@ if [ "$do_apt" -eq 1 ]; then
     fi
 
     info "${pkgs[*]}"
-    sudo apt-get update -qq
-    if ! sudo apt-get install -y "${pkgs[@]}"; then
+    sudo env DEBIAN_FRONTEND=noninteractive apt-get update -qq
+    if ! sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y "${pkgs[@]}"; then
         # rpi-connect only exists in the Raspberry Pi OS archive; on plain
         # Debian the whole transaction fails because of it. Retry without it.
         if [ "$do_connect" -eq 1 ]; then
@@ -108,7 +202,7 @@ if [ "$do_apt" -eq 1 ]; then
             for p in "${pkgs[@]}"; do
                 [ "$p" = "rpi-connect" ] || without_connect+=("$p")
             done
-            sudo apt-get install -y "${without_connect[@]}"
+            sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y "${without_connect[@]}"
         else
             die "apt install failed."
         fi

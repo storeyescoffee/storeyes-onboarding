@@ -11,8 +11,9 @@ Features:
 - **Wi-Fi** — scan, connect, forget, show current connection (NetworkManager)
 - **Raspberry Pi Connect** — status, sign-in, enable/disable
 - **System** — read-only device info (hostname, IP, temperature, uptime, disk)
-- **Agent** — `POST /agent/run` triggers an immediate storeyes-agent pass
-  instead of waiting for the next cron minute (see that repo's README)
+
+Independent of [storeyes-agent](https://github.com/storeyescoffee/storeyes-agent)
+— that's a separate, unrelated service that happens to run on the same Pi.
 
 Design notes: [docs/multi-feature-plan.md](docs/multi-feature-plan.md) (predates
 the API-only switch, but the feature breakdown still applies).
@@ -26,7 +27,7 @@ app/
   config.py          all tunables (camera res/fps, port, paths)
   shell.py           run() / sudo() subprocess helpers
   dashboard.py       "/" — health/status JSON only
-  camera/  wifi/  connect/  system/  agent/
+  camera/  wifi/  connect/  system/
                      each: service.py (logic, no FastAPI) + router.py (HTTP only)
 deploy/              sudoers allowlist + systemd user unit
 ```
@@ -46,6 +47,17 @@ account, and the systemd **user** service — then enables lingering and starts
 it. It's idempotent, so re-run it after a `git pull`. Steps can be skipped with
 `--skip-apt`, `--skip-sudoers`, `--skip-service` and `--no-connect`;
 `./install.sh --help` lists them.
+
+To remove it again:
+
+```bash
+./install.sh --uninstall
+```
+
+That stops and deletes the user service and the sudoers allowlist. The apt
+packages are left alone, and so is lingering unless you add `--disable-linger`.
+The same `--skip-*` flags apply, so `--uninstall --skip-sudoers` drops only the
+service.
 
 ### By hand
 
