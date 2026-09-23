@@ -2,10 +2,11 @@
 """storeyes-onboarding — entrypoint.
 
 An API-only service that runs on a Raspberry Pi: camera (live MJPEG + still),
-Wi-Fi management, Raspberry Pi Connect setup, read-only system info, and
-triggering storeyes-agent on demand. No web UI here — the frontend is
-storeyes-fast-onboarding (a Tauri desktop app), which talks to this API
-directly over the LAN.
+Wi-Fi management, Raspberry Pi Connect setup, and read-only system info. No
+web UI here — the frontend is storeyes-fast-onboarding (a Tauri desktop app),
+which talks to this API directly over the LAN. Independent of storeyes-agent
+(https://github.com/storeyescoffee/storeyes-agent) — that's a separate,
+unrelated service on the same device.
 
 See docs/multi-feature-plan.md for the design.
 
@@ -27,7 +28,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app import config
-from app.agent.router import router as agent_router
 from app.camera import service as camera_service
 from app.camera.router import router as camera_router
 from app.connect.router import router as connect_router
@@ -62,7 +62,6 @@ for _router in (
     wifi_router,
     connect_router,
     system_router,
-    agent_router,
 ):
     app.include_router(_router)
 
